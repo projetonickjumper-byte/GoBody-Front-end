@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, SlidersHorizontal, X, MapPin, Star, ArrowLeft, Dumbbell, Building2, Swords, Sparkles, Music, Flame, Loader2 } from "lucide-react"
+import { Search, SlidersHorizontal, X, MapPin, Star, ArrowLeft, Dumbbell, Building2, Swords, Sparkles, Music, Flame, Loader2, UserCheck, Waves, Sun, Trophy } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,10 @@ const categoryIcons: Record<string, React.ElementType> = {
   pilates: Sparkles,
   dancas: Music,
   crossfit: Flame,
+  "personal-trainer": UserCheck,
+  aquaticas: Waves,
+  "quadra-areia": Sun,
+  "quadra-society": Trophy,
 }
 
 const categoryDescriptions: Record<string, string> = {
