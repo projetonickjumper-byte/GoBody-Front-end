@@ -24,6 +24,19 @@ import {
   ShoppingCart,
   ChevronRight,
   Search,
+  DollarSign,
+  Wallet,
+  Receipt,
+  CreditCard,
+  Landmark,
+  BadgeDollarSign,
+  ShoppingBasket,
+  Handshake,
+  Target,
+  Lightbulb,
+  Activity,
+  Bot,
+  Gift,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -38,7 +51,26 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
 
-const sidebarItems = [
+type SidebarItem = {
+  href: string
+  icon: React.ElementType
+  label: string
+  badge?: number
+}
+
+type SidebarGroup = {
+  label: string
+  icon: React.ElementType
+  children: SidebarItem[]
+}
+
+type SidebarEntry = SidebarItem | SidebarGroup
+
+function isGroup(entry: SidebarEntry): entry is SidebarGroup {
+  return "children" in entry
+}
+
+const sidebarEntries: SidebarEntry[] = [
   { href: "/parceiro/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/parceiro/pedidos", icon: ShoppingCart, label: "Pedidos", badge: 3 },
   { href: "/parceiro/agenda", icon: Calendar, label: "Agenda" },
@@ -47,6 +79,31 @@ const sidebarItems = [
   { href: "/parceiro/servicos", icon: Package, label: "Servicos" },
   { href: "/parceiro/produtos", icon: ShoppingBag, label: "Produtos" },
   { href: "/parceiro/clientes", icon: Users, label: "Clientes" },
+  // Financeiro
+  {
+    label: "Financeiro",
+    icon: DollarSign,
+    children: [
+      { href: "/parceiro/financeiro/caixa", icon: Wallet, label: "Caixa" },
+      { href: "/parceiro/financeiro/comissao", icon: BadgeDollarSign, label: "Comissao" },
+      { href: "/parceiro/financeiro/contas-pagar", icon: Receipt, label: "Contas a Pagar" },
+      { href: "/parceiro/financeiro/contas-receber", icon: CreditCard, label: "Contas a Receber" },
+      { href: "/parceiro/financeiro/contas-financeiras", icon: Landmark, label: "Contas Financeiras" },
+      { href: "/parceiro/financeiro/vendas", icon: ShoppingBasket, label: "Vendas" },
+    ],
+  },
+  // CRM
+  {
+    label: "CRM",
+    icon: Handshake,
+    children: [
+      { href: "/parceiro/crm/leads", icon: Target, label: "Leads" },
+      { href: "/parceiro/crm/oportunidades", icon: Lightbulb, label: "Oportunidades" },
+      { href: "/parceiro/crm/atividades", icon: Activity, label: "Atividades" },
+      { href: "/parceiro/crm/automacoes", icon: Bot, label: "Automacoes" },
+      { href: "/parceiro/crm/recompensas", icon: Gift, label: "Clube de Recompensas" },
+    ],
+  },
   { href: "/parceiro/avaliacoes", icon: Star, label: "Avaliacoes" },
   { href: "/parceiro/relatorios", icon: BarChart3, label: "Relatorios" },
   { href: "/parceiro/configuracoes", icon: Settings, label: "Configuracoes" },
@@ -58,7 +115,20 @@ export default function PartnerDashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([])
   const pathname = usePathname()
+
+  // Auto-expand group if current path is inside it
+  useEffect(() => {
+    sidebarEntries.forEach((entry) => {
+      if (isGroup(entry)) {
+        const isInside = entry.children.some((child) => pathname.startsWith(child.href))
+        if (isInside && !expandedGroups.includes(entry.label)) {
+          setExpandedGroups((prev) => [...prev, entry.label])
+        }
+      }
+    })
+  }, [pathname])
   const { user, isAuthenticated, isPartner, isLoading, logout } = useAuth()
   const router = useRouter()
 
@@ -148,8 +218,73 @@ export default function PartnerDashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-            {sidebarItems.map((item) => {
+          <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+            {sidebarEntries.map((entry) => {
+              if (isGroup(entry)) {
+                const isExpanded = expandedGroups.includes(entry.label)
+                const isGroupActive = entry.children.some((child) => pathname.startsWith(child.href))
+                return (
+                  <div key={entry.label}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedGroups((prev) =>
+                          prev.includes(entry.label)
+                            ? prev.filter((g) => g !== entry.label)
+                            : [...prev, entry.label]
+                        )
+                      }
+                      className={cn(
+                        "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        isGroupActive
+                          ? "text-orange-500"
+                          : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+                      )}
+                    >
+                      <entry.icon className={cn(
+                        "h-5 w-5 transition-colors",
+                        isGroupActive ? "text-orange-500" : "text-zinc-500 group-hover:text-zinc-300"
+                      )} />
+                      <span className="flex-1 text-left">{entry.label}</span>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        isExpanded ? "rotate-0" : "-rotate-90",
+                        isGroupActive ? "text-orange-500/50" : "text-zinc-600"
+                      )} />
+                    </button>
+                    <div className={cn(
+                      "overflow-hidden transition-all duration-300 ease-in-out",
+                      isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                      <div className="ml-4 pl-4 border-l border-zinc-800/50 space-y-0.5 py-1">
+                        {entry.children.map((child) => {
+                          const isChildActive = pathname === child.href
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                                isChildActive
+                                  ? "bg-orange-500/10 text-orange-500 font-medium"
+                                  : "text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
+                              )}
+                            >
+                              <child.icon className={cn(
+                                "h-4 w-4 transition-colors",
+                                isChildActive ? "text-orange-500" : "text-zinc-600 group-hover:text-zinc-400"
+                              )} />
+                              <span>{child.label}</span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              const item = entry as SidebarItem
               const isActive = pathname === item.href
               return (
                 <Link
