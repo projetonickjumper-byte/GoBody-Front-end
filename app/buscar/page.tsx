@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, SlidersHorizontal, X, MapPin, Star, ArrowLeft, Dumbbell, Building2, Swords, Sparkles, Music, Flame, Loader2 } from "lucide-react"
+import { Search, SlidersHorizontal, X, MapPin, Star, ArrowLeft, Dumbbell, Building2, Swords, Sparkles, Music, Flame, Loader2, UserCheck, Waves, Sun, Trophy } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,10 @@ const categoryIcons: Record<string, React.ElementType> = {
   pilates: Sparkles,
   dancas: Music,
   crossfit: Flame,
+  "personal-trainer": UserCheck,
+  aquaticas: Waves,
+  "quadra-areia": Sun,
+  "quadra-society": Trophy,
 }
 
 const categoryDescriptions: Record<string, string> = {
@@ -37,6 +41,10 @@ const categoryDescriptions: Record<string, string> = {
   pilates: "Studios de pilates com aparelhos modernos e instrutores certificados.",
   dancas: "Escolas e academias de dança de todos os estilos.",
   crossfit: "Boxes de crossfit com treinos funcionais de alta intensidade.",
+  "personal-trainer": "Personal trainers qualificados para treinos individualizados e resultados mais rapidos.",
+  aquaticas: "Natacao, hidroginastica, polo aquatico e outras atividades em piscina.",
+  "quadra-areia": "Quadras de areia para beach tennis, futevolei, volei de praia e mais.",
+  "quadra-society": "Quadras society para futebol, eventos esportivos e partidas entre amigos.",
 }
 
 const categoryNames: Record<string, string> = {
@@ -46,6 +54,10 @@ const categoryNames: Record<string, string> = {
   pilates: "Pilates",
   dancas: "Danças",
   crossfit: "Crossfit",
+  "personal-trainer": "Personal Trainer",
+  aquaticas: "Aquaticas",
+  "quadra-areia": "Quadra de Areia",
+  "quadra-society": "Quadra Society",
 }
 
 // Mapeamento de categorias para modalidades relacionadas
@@ -56,6 +68,10 @@ const categoryModalityMap: Record<string, string[]> = {
   pilates: ["pilates", "alongamento", "flexibilidade"],
   dancas: ["dança", "danca", "zumba", "ballet", "salsa", "forró", "forro", "hip hop", "jazz"],
   crossfit: ["crossfit", "hiit", "funcional", "levantamento olímpico", "levantamento olimpico", "wod"],
+  "personal-trainer": ["personal", "personal trainer", "treino personalizado", "personal training", "consultoria"],
+  aquaticas: ["natação", "natacao", "hidroginástica", "hidroginastica", "polo aquático", "polo aquatico", "piscina", "aquático", "aquatico"],
+  "quadra-areia": ["beach tennis", "futevôlei", "futevolei", "vôlei de praia", "volei de praia", "areia", "quadra de areia"],
+  "quadra-society": ["society", "futebol", "futsal", "quadra", "campo", "pelada"],
 }
 
 function BuscarContent() {

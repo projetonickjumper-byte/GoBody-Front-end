@@ -21,6 +21,10 @@ export const categories: Category[] = [
   { id: "4", name: "Pilates", slug: "pilates", icon: "stretch", count: 112 },
   { id: "5", name: "Danças", slug: "dancas", icon: "music", count: 45 },
   { id: "6", name: "Crossfit", slug: "crossfit", icon: "flame", count: 38 },
+  { id: "7", name: "Personal Trainer", slug: "personal-trainer", icon: "user-check", count: 156 },
+  { id: "8", name: "Aquaticas", slug: "aquaticas", icon: "waves", count: 42 },
+  { id: "9", name: "Quadra de Areia", slug: "quadra-areia", icon: "sun", count: 31 },
+  { id: "10", name: "Quadra Society", slug: "quadra-society", icon: "trophy", count: 27 },
 ]
 
 // Banners
