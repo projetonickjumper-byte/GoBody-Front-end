@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, MapPin, Clock, Star, Filter } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AppShell } from "@/components/app-shell";
+import { checkinsService } from "@/lib/api/services/checkins.service";
+import { useAuth } from "@/lib/auth-context";
 
 const historyData = [
   {
@@ -120,12 +122,28 @@ function getTypeColor(type: string) {
 }
 
 export default function HistoricoPage() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState("all");
+  const [history, setHistory] = useState(historyData);
+
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const res = await checkinsService.getHistory(user?.id || "");
+        if (res.success && res.data && res.data.length > 0) {
+          setHistory(res.data as any);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar histórico:", error);
+      }
+    }
+    if (user?.id) loadHistory();
+  }, [user?.id]);
 
   const filteredHistory =
     filter === "all"
-      ? historyData
-      : historyData.filter((item) => item.type === filter);
+      ? history
+      : history.filter((item) => item.type === filter);
 
   const totalXP = filteredHistory.reduce((sum, item) => sum + item.xpEarned, 0);
   const totalVisits = filteredHistory.length;

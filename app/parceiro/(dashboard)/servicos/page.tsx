@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Plus,
   Search,
@@ -39,6 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ordersService } from "@/lib/api/services/orders.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface Service {
   id: string
@@ -119,10 +121,25 @@ const categories = [
 ]
 
 export default function ServicosPage() {
+  const { user } = useAuth()
   const [services, setServices] = useState<Service[]>(mockServices)
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingService, setEditingService] = useState<Service | null>(null)
+
+  useEffect(() => {
+    async function loadServices() {
+      try {
+        const res = await ordersService.getPartnerOrders(user?.id || "")
+        if (res.success && res.data) {
+          // Os serviços serão substituídos quando a API estiver configurada
+        }
+      } catch (error) {
+        console.error("Erro ao carregar serviços:", error)
+      }
+    }
+    if (user?.id) loadServices()
+  }, [user?.id])
   
   // Form state
   const [formData, setFormData] = useState({

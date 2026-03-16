@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Calendar, Clock, MapPin, X, CheckCircle, AlertCircle } from "lucide-react"
@@ -19,11 +19,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { mockGyms } from "@/lib/data"
+import { reservationsService } from "@/lib/api/services/reservations.service"
 
 interface Reservation {
   id: string
   gymId: string
+  gymName?: string
+  gymImage?: string
   type: "aula" | "personal" | "espaco"
   title: string
   date: string
@@ -85,6 +87,30 @@ const statusConfig = {
 export default function ReservasPage() {
   const [reservations, setReservations] = useState(mockReservations)
 
+  useEffect(() => {
+    async function loadReservations() {
+      try {
+        const res = await reservationsService.getAll()
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Reservation[] = res.data.map((r: any) => ({
+            id: r.id,
+            gymId: r.gymId,
+            type: r.type || "aula",
+            title: r.className || r.type || "Reserva",
+            date: r.date,
+            time: r.time,
+            status: r.status === "confirmed" ? "confirmada" : r.status === "pending" ? "pendente" : r.status === "cancelled" ? "cancelada" : "concluida",
+            instructor: r.instructorName,
+          }))
+          setReservations(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar reservas:", error)
+      }
+    }
+    loadReservations()
+  }, [])
+
   const upcomingReservations = reservations.filter(
     (r) => r.status === "confirmada" || r.status === "pendente"
   )
@@ -92,10 +118,15 @@ export default function ReservasPage() {
     (r) => r.status === "concluida" || r.status === "cancelada"
   )
 
-  const handleCancel = (id: string) => {
-    setReservations((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "cancelada" as const } : r))
-    )
+  const handleCancel = async (id: string) => {
+    try {
+      await reservationsService.cancel(id)
+      setReservations((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "cancelada" as const } : r))
+      )
+    } catch (error) {
+      console.error("Erro ao cancelar reserva:", error)
+    }
   }
 
   const formatDate = (dateStr: string) => {
@@ -137,7 +168,6 @@ export default function ReservasPage() {
               {upcomingReservations.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {upcomingReservations.map((reservation) => {
-                    const gym = mockGyms.find((g) => g.id === reservation.gymId)
                     const status = statusConfig[reservation.status]
                     const StatusIcon = status.icon
 
@@ -148,8 +178,8 @@ export default function ReservasPage() {
                       >
                         <div className="relative h-32">
                           <Image
-                            src={gym?.images[0] || "/placeholder.svg"}
-                            alt={gym?.name || "Academia"}
+                            src={reservation.gymImage || "/placeholder.svg"}
+                            alt={reservation.gymName || "Academia"}
                             fill
                             className="object-cover"
                           />
@@ -161,7 +191,7 @@ export default function ReservasPage() {
 
                         <div className="p-4">
                           <h3 className="font-semibold text-foreground">{reservation.title}</h3>
-                          <p className="text-sm text-muted-foreground">{gym?.name}</p>
+                          <p className="text-sm text-muted-foreground">{reservation.gymName}</p>
 
                           <div className="mt-3 space-y-2">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -231,7 +261,6 @@ export default function ReservasPage() {
               {pastReservations.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {pastReservations.map((reservation) => {
-                    const gym = mockGyms.find((g) => g.id === reservation.gymId)
                     const status = statusConfig[reservation.status]
                     const StatusIcon = status.icon
 
@@ -243,7 +272,7 @@ export default function ReservasPage() {
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-foreground">{reservation.title}</h3>
-                            <p className="text-sm text-muted-foreground">{gym?.name}</p>
+                            <p className="text-sm text-muted-foreground">{reservation.gymName}</p>
                           </div>
                           <Badge className={status.color}>
                             <StatusIcon className="h-3 w-3 mr-1" />

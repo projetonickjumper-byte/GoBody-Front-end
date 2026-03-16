@@ -19,7 +19,8 @@ import { Slider } from "@/components/ui/slider"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { AppShell } from "@/components/app-shell"
-import { mockGyms, categories } from "@/lib/data"
+import { gymsService } from "@/lib/api/services/gyms.service"
+import type { Gym, Category } from "@/lib/types"
 
 const categoryIcons: Record<string, React.ElementType> = {
   academias: Dumbbell,
@@ -78,6 +79,8 @@ function BuscarContent() {
   const searchParams = useSearchParams()
   const categoriaParam = searchParams.get("categoria")
   
+  const [allGyms, setAllGyms] = useState<Gym[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoriaParam ? [categoriaParam] : []
@@ -85,6 +88,23 @@ function BuscarContent() {
   const [priceRange, setPriceRange] = useState([0, 100])
   const [minRating, setMinRating] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // Carregar dados da API
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [gymsRes, catsRes] = await Promise.all([
+          gymsService.getAll({ pageSize: 100 }),
+          gymsService.getCategories(),
+        ])
+        if (gymsRes.success && gymsRes.data) setAllGyms(gymsRes.data)
+        if (catsRes.success && catsRes.data) setCategories(catsRes.data)
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+      }
+    }
+    loadData()
+  }, [])
 
   // Atualizar categoria selecionada quando o parâmetro da URL mudar
   useEffect(() => {
@@ -97,7 +117,7 @@ function BuscarContent() {
   const CategoryIcon = categoriaParam ? categoryIcons[categoriaParam] || Dumbbell : null
 
   const filteredGyms = useMemo(() => {
-    return mockGyms.filter((gym) => {
+    return allGyms.filter((gym) => {
       const matchesSearch =
         searchQuery === "" ||
         gym.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

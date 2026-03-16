@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,7 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { usuarios, type Usuario } from "@/lib/admin-data"
+import { usuarios as mockUsuarios, type Usuario } from "@/lib/admin-data"
+import { adminService } from "@/lib/api/services/admin.service"
 
 const statusColors = {
   ativo: "bg-success/20 text-success border-success/30",
@@ -44,7 +45,21 @@ const statusLabels = {
 export default function UsuariosPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("todos")
-  const [usuariosList, setUsuariosList] = useState<Usuario[]>(usuarios)
+  const [usuariosList, setUsuariosList] = useState<Usuario[]>(mockUsuarios)
+
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        const res = await adminService.getUsers()
+        if (res.success && res.data && res.data.length > 0) {
+          setUsuariosList(res.data as Usuario[])
+        }
+      } catch (error) {
+        console.error("Erro ao carregar usuários:", error)
+      }
+    }
+    loadUsers()
+  }, [])
 
   const filteredUsuarios = usuariosList.filter((usuario) => {
     const matchesSearch = usuario.nome.toLowerCase().includes(search.toLowerCase()) ||

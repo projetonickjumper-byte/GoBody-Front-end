@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   MoreVertical,
@@ -37,6 +37,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { studentsService } from "@/lib/api/services/students.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface Client {
   id: string
@@ -121,7 +123,36 @@ const mockClients: Client[] = [
 ]
 
 export default function ClientesPage() {
-  const [clients] = useState<Client[]>(mockClients)
+  const { user } = useAuth()
+  const [clients, setClients] = useState<Client[]>(mockClients)
+
+  useEffect(() => {
+    async function loadClients() {
+      if (!user?.id) return
+      try {
+        const res = await studentsService.getByTrainer(user.id)
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Client[] = res.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone || "",
+            avatar: c.avatar || null,
+            status: c.status || "active",
+            plan: "Personalizado",
+            startDate: c.startDate || c.createdAt,
+            nextAssessment: c.lastAssessment || null,
+            objectives: c.objectives || [],
+            rating: 5,
+          }))
+          setClients(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar clientes:", error)
+      }
+    }
+    loadClients()
+  }, [user?.id])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [planFilter, setPlanFilter] = useState("all")

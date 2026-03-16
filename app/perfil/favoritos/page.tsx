@@ -1,16 +1,40 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ArrowLeft, Heart, MapPin, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockGyms } from "@/lib/data";
+import { favoritesService } from "@/lib/api/services/favorites.service";
 import { AppShell } from "@/components/app-shell";
-
-const favoriteGyms = mockGyms.slice(0, 4);
+import type { Gym } from "@/lib/types";
 
 export default function FavoritosPage() {
+  const [favoriteGyms, setFavoriteGyms] = useState<Gym[]>([]);
+
+  useEffect(() => {
+    async function loadFavorites() {
+      try {
+        const res = await favoritesService.getAll();
+        if (res.success && res.data) {
+          setFavoriteGyms(res.data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar favoritos:", error);
+      }
+    }
+    loadFavorites();
+  }, []);
+
+  const handleRemoveFavorite = async (gymId: string) => {
+    try {
+      await favoritesService.remove(gymId);
+      setFavoriteGyms(prev => prev.filter(g => g.id !== gymId));
+    } catch (error) {
+      console.error("Erro ao remover favorito:", error);
+    }
+  };
   return (
     <AppShell>
       <div className="min-h-screen bg-background pb-20 lg:pb-6">

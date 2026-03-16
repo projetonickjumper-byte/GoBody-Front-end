@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CreditCard, CheckCircle2, Clock, AlertTriangle, Search, Plus, Send } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockReceivables = [
   { id: "1", client: "Maria Silva", description: "Plano Mensal Premium", value: 199.90, dueDate: "2026-02-15", status: "pendente" },
@@ -26,12 +27,27 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 export default function ContasReceberPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [receivables, setReceivables] = useState(mockReceivables)
 
-  const totalPendente = mockReceivables.filter(r => r.status === "pendente").reduce((a, b) => a + b.value, 0)
-  const totalAtrasado = mockReceivables.filter(r => r.status === "atrasado").reduce((a, b) => a + b.value, 0)
-  const totalRecebido = mockReceivables.filter(r => r.status === "recebido").reduce((a, b) => a + b.value, 0)
+  useEffect(() => {
+    async function loadReceivables() {
+      try {
+        const res = await billingService.getTransactions({ type: "receivable" })
+        if (res.success && res.data && res.data.length > 0) {
+          setReceivables(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar contas a receber:", error)
+      }
+    }
+    loadReceivables()
+  }, [])
 
-  const filtered = mockReceivables.filter(r => {
+  const totalPendente = receivables.filter(r => r.status === "pendente").reduce((a, b) => a + b.value, 0)
+  const totalAtrasado = receivables.filter(r => r.status === "atrasado").reduce((a, b) => a + b.value, 0)
+  const totalRecebido = receivables.filter(r => r.status === "recebido").reduce((a, b) => a + b.value, 0)
+
+  const filtered = receivables.filter(r => {
     const matchesSearch = r.client.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === "all" || r.status === statusFilter
     return matchesSearch && matchesStatus

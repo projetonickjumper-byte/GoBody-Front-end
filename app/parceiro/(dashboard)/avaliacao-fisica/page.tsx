@@ -56,6 +56,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { assessmentsService } from "@/lib/api/services/assessments.service"
+import { studentsService } from "@/lib/api/services/students.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface PhysicalAssessment {
   id: string
@@ -230,6 +233,7 @@ const mockClients = [
 
 function AvaliacaoFisicaContent() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   
   // Parâmetros vindos da página de pedidos (integração entre ecossistemas)
   const clientIdFromOrder = searchParams.get("clientId")
@@ -237,6 +241,43 @@ function AvaliacaoFisicaContent() {
   const orderIdFromOrder = searchParams.get("orderId")
   
   const [assessments, setAssessments] = useState<PhysicalAssessment[]>(mockAssessments)
+  const [allClients, setAllClients] = useState(mockClients)
+
+  // Carregar dados da API
+  useEffect(() => {
+    async function loadData() {
+      if (!user?.id) return
+      try {
+        const [assessRes, clientsRes] = await Promise.all([
+          assessmentsService.getByTrainer(user.id),
+          studentsService.getByTrainer(user.id),
+        ])
+        if (assessRes.success && assessRes.data && assessRes.data.length > 0) {
+          const mapped: PhysicalAssessment[] = assessRes.data.map((a: any) => ({
+            id: a.id,
+            clientId: a.studentId,
+            clientName: a.studentName,
+            clientAvatar: null,
+            date: a.date || a.createdAt,
+            measurements: a.measurements || {},
+            vitalSigns: a.vitalSigns || {},
+            observations: a.observations || "",
+          }))
+          setAssessments(mapped)
+        }
+        if (clientsRes.success && clientsRes.data && clientsRes.data.length > 0) {
+          setAllClients(clientsRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            avatar: c.avatar || null,
+          })))
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+      }
+    }
+    loadData()
+  }, [user?.id])
   const [search, setSearch] = useState("")
   const [clientFilter, setClientFilter] = useState("all")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -314,7 +355,7 @@ function AvaliacaoFisicaContent() {
 
   const createAssessment = () => {
     // Se veio de um pedido, usa o nome do cliente do pedido
-    let client = mockClients.find(c => c.id === newAssessment.clientId)
+    let client = allClients.find(c => c.id === newAssessment.clientId)
     
     // Se o cliente não existe no mock mas veio de um pedido, cria um temporário
     if (!client && clientIdFromOrder && clientNameFromOrder) {
@@ -438,7 +479,7 @@ function AvaliacaoFisicaContent() {
                       <SelectValue placeholder="Selecione um aluno" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockClients.map(client => (
+                      {allClients.map(client => (
                         <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                       ))}
                     </SelectContent>

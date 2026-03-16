@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Landmark, Plus, Eye, EyeOff, ArrowUpRight, ArrowDownRight, MoreVertical } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockAccounts = [
   { id: "1", name: "Conta Corrente Empresarial", bank: "Itau", type: "Corrente", balance: 45230.50, lastMovement: "2026-02-09", color: "from-orange-500 to-orange-600" },
@@ -16,8 +17,23 @@ const mockAccounts = [
 
 export default function ContasFinanceirasPage() {
   const [showBalances, setShowBalances] = useState(true)
+  const [accounts, setAccounts] = useState(mockAccounts)
 
-  const totalBalance = mockAccounts.reduce((a, b) => a + b.balance, 0)
+  useEffect(() => {
+    async function loadAccounts() {
+      try {
+        const res = await billingService.getSummary()
+        if (res.success && res.data && (res.data as any).accounts) {
+          setAccounts((res.data as any).accounts)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar contas financeiras:", error)
+      }
+    }
+    loadAccounts()
+  }, [])
+
+  const totalBalance = accounts.reduce((a, b) => a + b.balance, 0)
 
   return (
     <div className="space-y-6">

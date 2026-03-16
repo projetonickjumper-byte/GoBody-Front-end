@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Receipt, AlertTriangle, CheckCircle2, Clock, Search, Plus, Download } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockBills = [
   { id: "1", description: "Aluguel do espaco", vendor: "Imobiliaria Centro", value: 5500, dueDate: "2026-02-15", status: "pendente", category: "Aluguel" },
@@ -27,12 +28,27 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 export default function ContasPagarPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [bills, setBills] = useState(mockBills)
 
-  const totalPendente = mockBills.filter(b => b.status === "pendente").reduce((a, b) => a + b.value, 0)
-  const totalVencido = mockBills.filter(b => b.status === "vencido").reduce((a, b) => a + b.value, 0)
-  const totalPago = mockBills.filter(b => b.status === "pago").reduce((a, b) => a + b.value, 0)
+  useEffect(() => {
+    async function loadBills() {
+      try {
+        const res = await billingService.getTransactions({ type: "payable" })
+        if (res.success && res.data && res.data.length > 0) {
+          setBills(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar contas a pagar:", error)
+      }
+    }
+    loadBills()
+  }, [])
 
-  const filtered = mockBills.filter(b => {
+  const totalPendente = bills.filter(b => b.status === "pendente").reduce((a, b) => a + b.value, 0)
+  const totalVencido = bills.filter(b => b.status === "vencido").reduce((a, b) => a + b.value, 0)
+  const totalPago = bills.filter(b => b.status === "pago").reduce((a, b) => a + b.value, 0)
+
+  const filtered = bills.filter(b => {
     const matchesSearch = b.description.toLowerCase().includes(search.toLowerCase()) || b.vendor.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === "all" || b.status === statusFilter
     return matchesSearch && matchesStatus

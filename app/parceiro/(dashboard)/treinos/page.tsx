@@ -56,6 +56,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { workoutsService } from "@/lib/api/services/workouts.service"
+import { studentsService } from "@/lib/api/services/students.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface Exercise {
   id: string
@@ -193,6 +196,7 @@ const exerciseLibrary = [
 
 function TreinosContent() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   
   // Parâmetros vindos da página de pedidos (integração entre ecossistemas)
   const clientIdFromOrder = searchParams.get("clientId")
@@ -200,6 +204,56 @@ function TreinosContent() {
   const orderIdFromOrder = searchParams.get("orderId")
   
   const [workouts, setWorkouts] = useState<Workout[]>(mockWorkouts)
+  const [clients, setClients] = useState(mockClients)
+
+  // Carregar treinos e clientes da API
+  useEffect(() => {
+    async function loadData() {
+      if (!user?.id) return
+      try {
+        const [workoutsRes, clientsRes] = await Promise.all([
+          workoutsService.getByTrainer(user.id),
+          studentsService.getByTrainer(user.id),
+        ])
+        if (workoutsRes.success && workoutsRes.data && workoutsRes.data.length > 0) {
+          const mapped: Workout[] = workoutsRes.data.map((w: any) => ({
+            id: w.id,
+            name: w.name,
+            description: w.description || "",
+            objective: w.objective || "hipertrofia",
+            level: w.level || "intermediario",
+            duration: w.duration || "60 min",
+            exercises: (w.exercises || []).map((e: any) => ({
+              id: e.id,
+              name: e.name,
+              sets: e.sets,
+              reps: e.reps,
+              rest: e.rest,
+              notes: e.notes,
+            })),
+            assignedTo: (w.assignedStudents || []).map((s: any) => ({
+              id: typeof s === "string" ? s : s.id,
+              name: typeof s === "string" ? "Aluno" : s.name,
+              avatar: null,
+            })),
+            createdAt: w.createdAt,
+            updatedAt: w.updatedAt,
+          }))
+          setWorkouts(mapped)
+        }
+        if (clientsRes.success && clientsRes.data && clientsRes.data.length > 0) {
+          setClients(clientsRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            avatar: c.avatar || null,
+          })))
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+      }
+    }
+    loadData()
+  }, [user?.id])
   const [search, setSearch] = useState("")
   const [objectiveFilter, setObjectiveFilter] = useState("all")
   const [levelFilter, setLevelFilter] = useState("all")
@@ -336,7 +390,7 @@ function TreinosContent() {
   const assignWorkout = (workoutId: string, clientIds: string[]) => {
     setWorkouts(prev => prev.map(w => {
       if (w.id === workoutId) {
-        const assignedClients = mockClients.filter(c => clientIds.includes(c.id))
+        const assignedClients = clients.filter(c => clientIds.includes(c.id))
         return { ...w, assignedTo: assignedClients, updatedAt: new Date().toISOString().split("T")[0] }
       }
       return w
@@ -591,7 +645,7 @@ function TreinosContent() {
                 <Users className="h-5 w-5 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{mockClients.length}</p>
+                <p className="text-2xl font-bold text-foreground">{clients.length}</p>
                 <p className="text-sm text-muted-foreground">Alunos ativos</p>
               </div>
             </div>
@@ -837,7 +891,7 @@ function TreinosContent() {
           {selectedWorkout && (
             <AssignWorkoutContent
               workout={selectedWorkout}
-              clients={mockClients}
+              clients={clients}
               onAssign={(clientIds) => assignWorkout(selectedWorkout.id, clientIds)}
               onCancel={() => {
                 setIsAssignModalOpen(false)

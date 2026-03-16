@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppShell } from "@/components/app-shell"
 import { Header } from "@/components/header"
 import { useAuth } from "@/lib/auth-context"
+import { workoutsService } from "@/lib/api/services/workouts.service"
 
 // Tipos
 interface Exercise {
@@ -131,9 +132,10 @@ const mockWorkouts: Workout[] = [
 const STORAGE_KEY = "fitapp_workout_progress"
 
 export default function MeusTreinosPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   const router = useRouter()
   
+  const [allWorkouts, setAllWorkouts] = useState<Workout[]>(mockWorkouts)
   const [workoutProgress, setWorkoutProgress] = useState<{ [workoutId: string]: WorkoutProgress }>({})
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
@@ -146,6 +148,44 @@ export default function MeusTreinosPage() {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) setWorkoutProgress(JSON.parse(saved))
   }, [])
+
+  // Carregar treinos da API
+  useEffect(() => {
+    async function loadWorkouts() {
+      if (!user?.id) return
+      try {
+        const res = await workoutsService.getByStudent(user.id)
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Workout[] = res.data.map((w: any) => ({
+            id: w.id,
+            name: w.name,
+            description: w.description || "",
+            trainerId: w.trainerId,
+            trainerName: w.trainerName || "Trainer",
+            trainerAvatar: w.trainerAvatar || "/placeholder.svg",
+            duration: w.duration || 60,
+            difficulty: w.level || "intermediario",
+            targetMuscles: w.targetMuscles || [],
+            scheduledDays: w.scheduledDays || [],
+            createdAt: w.createdAt,
+            exercises: (w.exercises || []).map((e: any) => ({
+              id: e.id,
+              name: e.name,
+              sets: e.sets,
+              reps: e.reps,
+              rest: typeof e.rest === "string" ? parseInt(e.rest) || 60 : e.rest,
+              weight: e.weight,
+              notes: e.notes,
+            })),
+          }))
+          setAllWorkouts(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar treinos:", error)
+      }
+    }
+    if (isAuthenticated) loadWorkouts()
+  }, [isAuthenticated, user?.id])
   
   const saveProgress = useCallback((progress: { [workoutId: string]: WorkoutProgress }) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
@@ -198,7 +238,7 @@ export default function MeusTreinosPage() {
     return days[new Date().getDay()]
   }
   
-  const todaysWorkouts = mockWorkouts.filter(w => 
+  const todaysWorkouts = allWorkouts.filter(w => 
     w.scheduledDays.some(d => d.toLowerCase() === getDayOfWeek().toLowerCase())
   )
   
@@ -636,7 +676,7 @@ export default function MeusTreinosPage() {
               <div>
                 <h2 className="text-sm font-semibold mb-2">Todos os Treinos</h2>
                 <div className="space-y-2">
-                  {mockWorkouts.map(workout => {
+                  {allWorkouts.map(workout => {
                     const status = getWorkoutStatus(workout.id)
                     const progress = getWorkoutProgress(workout)
                     

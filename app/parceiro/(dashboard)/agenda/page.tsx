@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,6 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { reservationsService } from "@/lib/api/services/reservations.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface Appointment {
   id: string
@@ -101,9 +103,36 @@ const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
 const timeSlots = Array.from({ length: 14 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`)
 
 export default function AgendaPage() {
+  const { user } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>(mockAppointments)
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [view, setView] = useState<"week" | "day">("week")
+
+  useEffect(() => {
+    async function loadAppointments() {
+      try {
+        const res = await reservationsService.getAll()
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Appointment[] = res.data.map((r: any) => ({
+            id: r.id,
+            clientName: r.gymName || "Cliente",
+            clientAvatar: null,
+            service: r.className || r.type || "Serviço",
+            date: r.date,
+            time: r.time,
+            duration: 60,
+            status: r.status,
+            notes: "",
+          }))
+          setAllAppointments(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar agenda:", error)
+      }
+    }
+    loadAppointments()
+  }, [user?.id])
 
   const getWeekDates = () => {
     const dates = []
@@ -125,7 +154,7 @@ export default function AgendaPage() {
   }
 
   const getAppointmentsForDate = (date: Date) => {
-    return mockAppointments.filter(a => a.date === formatDate(date))
+    return allAppointments.filter(a => a.date === formatDate(date))
   }
 
   const getStatusColor = (status: string) => {

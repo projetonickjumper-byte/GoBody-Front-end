@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   TrendingUp,
   TrendingDown,
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const monthlyData = [
   { month: "Jan", revenue: 8500, clients: 45, bookings: 120 },
@@ -47,15 +48,30 @@ const topProducts = [
 
 export default function RelatoriosPage() {
   const [period, setPeriod] = useState("month")
+  const [reportData, setReportData] = useState(monthlyData)
 
-  const currentMonth = monthlyData[monthlyData.length - 1]
-  const previousMonth = monthlyData[monthlyData.length - 2]
+  useEffect(() => {
+    async function loadReportData() {
+      try {
+        const res = await billingService.getSummary()
+        if (res.success && res.data && (res.data as any).monthlyData) {
+          setReportData((res.data as any).monthlyData)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do relatório:", error)
+      }
+    }
+    loadReportData()
+  }, [])
+
+  const currentMonth = reportData[reportData.length - 1]
+  const previousMonth = reportData[reportData.length - 2]
 
   const revenueChange = ((currentMonth.revenue - previousMonth.revenue) / previousMonth.revenue * 100).toFixed(1)
   const clientsChange = ((currentMonth.clients - previousMonth.clients) / previousMonth.clients * 100).toFixed(1)
   const bookingsChange = ((currentMonth.bookings - previousMonth.bookings) / previousMonth.bookings * 100).toFixed(1)
 
-  const maxRevenue = Math.max(...monthlyData.map(d => d.revenue))
+  const maxRevenue = Math.max(...reportData.map(d => d.revenue))
 
   return (
     <div className="space-y-6">
@@ -186,7 +202,7 @@ export default function RelatoriosPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {monthlyData.map((data) => (
+              {reportData.map((data) => (
                 <div key={data.month} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-foreground">{data.month}</span>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/lib/auth-context"
+import { assessmentsService } from "@/lib/api/services/assessments.service"
 import { 
   Activity, 
   TrendingUp, 
@@ -165,11 +166,61 @@ function getGorduraClassificacao(gordura: number, sexo: string = "M") {
 }
 
 export default function MinhasAvaliacoesPage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const router = useRouter()
+  const [allAvaliacoes, setAllAvaliacoes] = useState(avaliacoes)
   const [selectedAvaliacao, setSelectedAvaliacao] = useState(avaliacoes[0])
   const [compareMode, setCompareMode] = useState(false)
   const [compareAvaliacao, setCompareAvaliacao] = useState(avaliacoes[1])
+
+  useEffect(() => {
+    async function loadAssessments() {
+      if (!user?.id) return
+      try {
+        const res = await assessmentsService.getByStudent(user.id)
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped = res.data.map((a: any, index: number) => ({
+            id: a.id || index + 1,
+            data: a.date || a.createdAt,
+            profissional: a.trainerName || "Profissional",
+            local: a.local || "Academia",
+            peso: a.measurements?.weight || 0,
+            altura: a.measurements?.height || 0,
+            imc: a.measurements?.imc || 0,
+            gorduraCorporal: a.measurements?.bodyFat || 0,
+            massaMagra: a.measurements?.leanMass || 0,
+            massaGorda: (a.measurements?.weight || 0) - (a.measurements?.leanMass || 0),
+            aguaCorporal: 0,
+            massaOssea: 0,
+            gorduraVisceral: 0,
+            taxaMetabolica: 0,
+            idadeMetabolica: 0,
+            circunferencias: {
+              pescoco: a.measurements?.neck || 0,
+              ombro: a.measurements?.shoulders || 0,
+              torax: a.measurements?.chest || 0,
+              cintura: a.measurements?.waist || 0,
+              quadril: a.measurements?.hips || 0,
+              bracoD: a.measurements?.rightArm || 0,
+              bracoE: a.measurements?.leftArm || 0,
+              antebracoD: a.measurements?.rightForearm || 0,
+              antebracoE: a.measurements?.leftForearm || 0,
+              coxaD: a.measurements?.rightThigh || 0,
+              coxaE: a.measurements?.leftThigh || 0,
+              panturrilhaD: a.measurements?.rightCalf || 0,
+              panturrilhaE: a.measurements?.leftCalf || 0,
+            }
+          }))
+          setAllAvaliacoes(mapped)
+          setSelectedAvaliacao(mapped[0])
+          if (mapped.length > 1) setCompareAvaliacao(mapped[1])
+        }
+      } catch (error) {
+        console.error("Erro ao carregar avaliações:", error)
+      }
+    }
+    if (isAuthenticated) loadAssessments()
+  }, [isAuthenticated, user?.id])
 
   if (!isAuthenticated) {
     return (
@@ -195,8 +246,8 @@ export default function MinhasAvaliacoesPage() {
     )
   }
 
-  const ultimaAvaliacao = avaliacoes[0]
-  const avaliacaoAnterior = avaliacoes[1]
+  const ultimaAvaliacao = allAvaliacoes[0]
+  const avaliacaoAnterior = allAvaliacoes[1]
   const imcClass = getIMCClassificacao(ultimaAvaliacao.imc)
   const gorduraClass = getGorduraClassificacao(ultimaAvaliacao.gorduraCorporal)
 
@@ -715,7 +766,7 @@ export default function MinhasAvaliacoesPage() {
 
             {/* Tab Historico */}
             <TabsContent value="historico" className="space-y-3">
-              {avaliacoes.map((avaliacao, index) => (
+              {allAvaliacoes.map((avaliacao, index) => (
                 <Card 
                   key={avaliacao.id} 
                   className={cn(
@@ -750,36 +801,36 @@ export default function MinhasAvaliacoesPage() {
                     </div>
 
                     {/* Mini comparacao */}
-                    {index < avaliacoes.length - 1 && (
+                    {index < allAvaliacoes.length - 1 && (
                       <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-2">
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground">Peso</p>
                           <p className={cn(
                             "text-xs font-medium",
-                            avaliacao.peso < avaliacoes[index + 1].peso ? "text-green-400" : "text-red-400"
+                            avaliacao.peso < allAvaliacoes[index + 1].peso ? "text-green-400" : "text-red-400"
                           )}>
-                            {avaliacao.peso < avaliacoes[index + 1].peso ? "-" : "+"}
-                            {Math.abs(avaliacao.peso - avaliacoes[index + 1].peso).toFixed(1)} kg
+                            {avaliacao.peso < allAvaliacoes[index + 1].peso ? "-" : "+"}
+                            {Math.abs(avaliacao.peso - allAvaliacoes[index + 1].peso).toFixed(1)} kg
                           </p>
                         </div>
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground">Gordura</p>
                           <p className={cn(
                             "text-xs font-medium",
-                            avaliacao.gorduraCorporal < avaliacoes[index + 1].gorduraCorporal ? "text-green-400" : "text-red-400"
+                            avaliacao.gorduraCorporal < allAvaliacoes[index + 1].gorduraCorporal ? "text-green-400" : "text-red-400"
                           )}>
-                            {avaliacao.gorduraCorporal < avaliacoes[index + 1].gorduraCorporal ? "-" : "+"}
-                            {Math.abs(avaliacao.gorduraCorporal - avaliacoes[index + 1].gorduraCorporal).toFixed(1)}%
+                            {avaliacao.gorduraCorporal < allAvaliacoes[index + 1].gorduraCorporal ? "-" : "+"}
+                            {Math.abs(avaliacao.gorduraCorporal - allAvaliacoes[index + 1].gorduraCorporal).toFixed(1)}%
                           </p>
                         </div>
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground">M. Magra</p>
                           <p className={cn(
                             "text-xs font-medium",
-                            avaliacao.massaMagra > avaliacoes[index + 1].massaMagra ? "text-green-400" : "text-red-400"
+                            avaliacao.massaMagra > allAvaliacoes[index + 1].massaMagra ? "text-green-400" : "text-red-400"
                           )}>
-                            {avaliacao.massaMagra > avaliacoes[index + 1].massaMagra ? "+" : ""}
-                            {(avaliacao.massaMagra - avaliacoes[index + 1].massaMagra).toFixed(1)} kg
+                            {avaliacao.massaMagra > allAvaliacoes[index + 1].massaMagra ? "+" : ""}
+                            {(avaliacao.massaMagra - allAvaliacoes[index + 1].massaMagra).toFixed(1)} kg
                           </p>
                         </div>
                       </div>
@@ -805,28 +856,28 @@ export default function MinhasAvaliacoesPage() {
                     <div className="text-center p-3 rounded-lg bg-green-500/10">
                       <TrendingDown className="h-5 w-5 text-green-400 mx-auto mb-1" />
                       <p className="text-lg font-bold text-green-400">
-                        -{(avaliacoes[avaliacoes.length - 1].peso - avaliacoes[0].peso).toFixed(1)} kg
+                        -{(allAvaliacoes[allAvaliacoes.length - 1].peso - allAvaliacoes[0].peso).toFixed(1)} kg
                       </p>
                       <p className="text-[10px] text-muted-foreground">Peso perdido</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-green-500/10">
                       <TrendingDown className="h-5 w-5 text-green-400 mx-auto mb-1" />
                       <p className="text-lg font-bold text-green-400">
-                        -{(avaliacoes[avaliacoes.length - 1].gorduraCorporal - avaliacoes[0].gorduraCorporal).toFixed(1)}%
+                        -{(allAvaliacoes[allAvaliacoes.length - 1].gorduraCorporal - allAvaliacoes[0].gorduraCorporal).toFixed(1)}%
                       </p>
                       <p className="text-[10px] text-muted-foreground">Gordura reduzida</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-purple-500/10">
                       <Activity className="h-5 w-5 text-purple-400 mx-auto mb-1" />
                       <p className="text-lg font-bold text-purple-400">
-                        {(avaliacoes[0].massaMagra - avaliacoes[avaliacoes.length - 1].massaMagra) > 0 ? "-" : "+"}
-                        {Math.abs(avaliacoes[0].massaMagra - avaliacoes[avaliacoes.length - 1].massaMagra).toFixed(1)} kg
+                        {(allAvaliacoes[0].massaMagra - allAvaliacoes[allAvaliacoes.length - 1].massaMagra) > 0 ? "-" : "+"}
+                        {Math.abs(allAvaliacoes[0].massaMagra - allAvaliacoes[allAvaliacoes.length - 1].massaMagra).toFixed(1)} kg
                       </p>
                       <p className="text-[10px] text-muted-foreground">Massa magra</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-500/10">
                       <Clock className="h-5 w-5 text-blue-400 mx-auto mb-1" />
-                      <p className="text-lg font-bold text-blue-400">{avaliacoes.length}</p>
+                      <p className="text-lg font-bold text-blue-400">{allAvaliacoes.length}</p>
                       <p className="text-[10px] text-muted-foreground">Avaliacoes</p>
                     </div>
                   </div>

@@ -1,18 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, MapPin, Star, Navigation, List, X, Grid } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
-import { mockGyms } from "@/lib/data";
+import { gymsService } from "@/lib/api/services/gyms.service";
 import type { Gym } from "@/lib/types";
 
 export default function MapaPage() {
+  const [allGyms, setAllGyms] = useState<Gym[]>([]);
   const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
   const [showList, setShowList] = useState(false);
+
+  useEffect(() => {
+    async function loadGyms() {
+      try {
+        const res = await gymsService.getAll({ pageSize: 100 });
+        if (res.success && res.data) setAllGyms(res.data);
+      } catch (error) {
+        console.error("Erro ao carregar academias:", error);
+      }
+    }
+    loadGyms();
+  }, []);
 
   return (
     <AppShell>
@@ -44,8 +57,8 @@ export default function MapaPage() {
           {/* Desktop: Side Panel */}
           <aside className={`hidden lg:block w-96 border-r border-border overflow-y-auto ${!showList ? 'lg:block' : 'lg:hidden'}`}>
             <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground mb-4">{mockGyms.length} academias encontradas</p>
-              {mockGyms.map((gym) => (
+              <p className="text-sm text-muted-foreground mb-4">{allGyms.length} academias encontradas</p>
+              {allGyms.map((gym) => (
                 <button
                   key={gym.id}
                   type="button"
@@ -92,7 +105,7 @@ export default function MapaPage() {
             {showList ? (
               /* Mobile List View */
               <div className="p-4 space-y-3 lg:hidden overflow-y-auto h-full">
-                {mockGyms.map((gym) => (
+                {allGyms.map((gym) => (
                   <Link
                     key={gym.id}
                     href={`/academia/${gym.slug}`}
@@ -146,7 +159,7 @@ export default function MapaPage() {
                   />
 
                   {/* Map Markers */}
-                  {mockGyms.map((gym, index) => {
+                  {allGyms.map((gym, index) => {
                     const positions = [
                       { top: "20%", left: "30%" },
                       { top: "35%", left: "60%" },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Star,
   MessageSquare,
@@ -28,6 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { reviewsService } from "@/lib/api/services/reviews.service"
+import { useAuth } from "@/lib/auth-context"
 
 interface Review {
   id: string
@@ -116,7 +118,33 @@ const ratingDistribution = [
 ]
 
 export default function AvaliacoesPage() {
+  const { user } = useAuth()
   const [reviews, setReviews] = useState<Review[]>(mockReviews)
+
+  useEffect(() => {
+    async function loadReviews() {
+      try {
+        // Carrega reviews da academia do parceiro
+        const res = await reviewsService.getAll()
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: Review[] = res.data.map((r: any) => ({
+            id: r.id,
+            userName: r.userName,
+            userAvatar: r.userAvatar || null,
+            rating: r.rating,
+            comment: r.text || r.comment || "",
+            date: r.date || r.createdAt,
+            replied: !!r.gymResponse,
+            replyText: r.gymResponse?.text || null,
+          }))
+          setReviews(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar avaliações:", error)
+      }
+    }
+    loadReviews()
+  }, [user?.id])
   const [filter, setFilter] = useState("all")
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
   const [responseText, setResponseText] = useState("")

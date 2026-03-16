@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { empresas, type Empresa, type EmpresaStatus } from "@/lib/admin-data"
+import { empresas as mockEmpresas, type Empresa, type EmpresaStatus } from "@/lib/admin-data"
+import { adminService } from "@/lib/api/services/admin.service"
 
 const statusConfig = {
   ativo: { 
@@ -62,7 +63,21 @@ const statusConfig = {
 export default function EmpresasPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("todos")
-  const [empresasList, setEmpresasList] = useState<Empresa[]>(empresas)
+  const [empresasList, setEmpresasList] = useState<Empresa[]>(mockEmpresas)
+
+  useEffect(() => {
+    async function loadCompanies() {
+      try {
+        const res = await adminService.getCompanies()
+        if (res.success && res.data && res.data.length > 0) {
+          setEmpresasList(res.data as Empresa[])
+        }
+      } catch (error) {
+        console.error("Erro ao carregar empresas:", error)
+      }
+    }
+    loadCompanies()
+  }, [])
 
   const filteredEmpresas = empresasList.filter((empresa) => {
     const matchesSearch = empresa.nome.toLowerCase().includes(search.toLowerCase()) ||

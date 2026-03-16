@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Bell, Check, Trash2, Gift, Calendar, Trophy, Users, Zap, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppShell } from "@/components/app-shell"
 import { cn } from "@/lib/utils"
+import { notificationsService } from "@/lib/api"
 
 interface Notification {
   id: string
@@ -85,6 +86,20 @@ const typeConfig = {
 
 export default function NotificacoesPage() {
   const [notifications, setNotifications] = useState(initialNotifications)
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const res = await notificationsService.getAll()
+        if (res.success && res.data && res.data.length > 0) {
+          setNotifications(res.data as Notification[])
+        }
+      } catch (error) {
+        console.error("Erro ao carregar notificações:", error)
+      }
+    }
+    loadNotifications()
+  }, [])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 

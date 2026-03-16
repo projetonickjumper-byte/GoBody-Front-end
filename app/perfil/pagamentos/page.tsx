@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, CreditCard, Plus, Trash2, CheckCircle, Clock, XCircle, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { billingService } from "@/lib/api/services/billing.service"
 
 interface PaymentMethod {
   id: string
@@ -68,7 +69,22 @@ const statusConfig = {
 
 export default function PagamentosPage() {
   const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods)
+  const [userTransactions, setUserTransactions] = useState(transactions)
   const [newCardOpen, setNewCardOpen] = useState(false)
+
+  useEffect(() => {
+    async function loadPaymentData() {
+      try {
+        const res = await billingService.getTransactions({})
+        if (res.success && res.data && res.data.length > 0) {
+          setUserTransactions(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados de pagamento:", error)
+      }
+    }
+    loadPaymentData()
+  }, [])
 
   const handleRemoveCard = (id: string) => {
     setPaymentMethods((prev) => prev.filter((m) => m.id !== id))
@@ -224,7 +240,7 @@ export default function PagamentosPage() {
             </TabsContent>
 
             <TabsContent value="historico" className="space-y-4">
-              {transactions.map((transaction) => {
+              {userTransactions.map((transaction) => {
                 const status = statusConfig[transaction.status]
                 const StatusIcon = status.icon
                 return (
@@ -259,7 +275,7 @@ export default function PagamentosPage() {
                 )
               })}
 
-              {transactions.length === 0 && (
+              {userTransactions.length === 0 && (
                 <div className="text-center py-12">
                   <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">Nenhuma transacao encontrada</p>

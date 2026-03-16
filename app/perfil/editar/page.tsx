@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Camera, User, Mail, Phone, Calendar, MapPin, Loader2 } from "lucide-react"
@@ -17,30 +17,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { mockUser } from "@/lib/data"
+import { useAuth } from "@/lib/auth-context"
+import { usersService } from "@/lib/api/services/users.service"
 
 export default function EditarPerfilPage() {
+  const { user } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState({
-    name: mockUser.name,
-    email: mockUser.email,
-    phone: "(11) 99999-9999",
-    birthdate: "1990-05-15",
-    bio: mockUser.bio || "",
-    city: "São Paulo",
-    state: "SP",
+    name: "",
+    email: "",
+    phone: "",
+    birthdate: "",
+    bio: "",
+    city: "",
+    state: "",
     gender: "masculino",
   })
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        birthdate: user.birthDate || "",
+        bio: user.bio || "",
+        city: "",
+        state: "",
+        gender: user.gender === "male" ? "masculino" : user.gender === "female" ? "feminino" : "outro",
+      })
+    }
+  }, [user])
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true)
-    setTimeout(() => {
+    try {
+      await usersService.updateProfile({
+        name: formData.name,
+        phone: formData.phone,
+        bio: formData.bio,
+        birthDate: formData.birthdate,
+        gender: formData.gender === "masculino" ? "male" : formData.gender === "feminino" ? "female" : "not_specified",
+      })
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error)
+    } finally {
       setIsSaving(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -75,8 +102,8 @@ export default function EditarPerfilPage() {
           <div className="flex flex-col items-center">
             <div className="relative">
               <Avatar className="h-28 w-28 border-4 border-background">
-                <AvatarImage src={mockUser.avatar || "/placeholder.svg"} alt={mockUser.name} />
-                <AvatarFallback className="text-2xl">{mockUser.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name || ""} />
+                <AvatarFallback className="text-2xl">{user?.name?.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <button
                 type="button"

@@ -30,8 +30,10 @@ import {
 } from "@/components/ui/select"
 import { AppShell } from "@/components/app-shell"
 import { Header } from "@/components/header"
-import { mockGyms } from "@/lib/data"
+import { reservationsService } from "@/lib/api/services/reservations.service"
+import { gymsService } from "@/lib/api/services/gyms.service"
 import { useAuth } from "@/lib/auth-context"
+import type { Gym } from "@/lib/types"
 
 interface Reservation {
   id: string
@@ -120,11 +122,14 @@ const reservations: Reservation[] = [
   }
 ]
 
-const upcomingClasses = [
+// Classes são carregadas dinamicamente
+const defaultClasses = [
   {
     id: "c1",
     title: "HIIT Extreme",
-    gym: mockGyms[0],
+    gymName: "Academia",
+    gymImage: "/placeholder.svg",
+    gymSlug: "",
     date: "2026-01-31",
     time: "19:00",
     duration: "30min",
@@ -135,7 +140,9 @@ const upcomingClasses = [
   {
     id: "c2",
     title: "Pilates Reformer",
-    gym: mockGyms[1],
+    gymName: "Academia",
+    gymImage: "/placeholder.svg",
+    gymSlug: "",
     date: "2026-01-31",
     time: "20:00",
     duration: "50min",
@@ -146,7 +153,9 @@ const upcomingClasses = [
   {
     id: "c3",
     title: "Muay Thai",
-    gym: mockGyms[2],
+    gymName: "Academia",
+    gymImage: "/placeholder.svg",
+    gymSlug: "",
     date: "2026-02-01",
     time: "18:30",
     duration: "1h",
@@ -185,6 +194,8 @@ function formatDate(dateStr: string) {
 
 export default function ReservasPage() {
   const [filter, setFilter] = useState("all")
+  const [apiReservations, setApiReservations] = useState<Reservation[]>(reservations)
+  const [availableGyms, setAvailableGyms] = useState<Gym[]>([])
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
 
@@ -194,6 +205,39 @@ export default function ReservasPage() {
     }
   }, [isAuthenticated, isLoading, router])
 
+  useEffect(() => {
+    async function loadReservations() {
+      try {
+        const [resReservations, resGyms] = await Promise.all([
+          reservationsService.getAll(),
+          gymsService.getAll({ pageSize: 3 }),
+        ])
+        if (resReservations.success && resReservations.data && resReservations.data.length > 0) {
+          const mapped: Reservation[] = resReservations.data.map((r: any) => ({
+            id: r.id,
+            type: r.type || "aula",
+            title: r.className || r.type || "Reserva",
+            gymId: r.gymId,
+            gymName: r.gymName || "Academia",
+            gymImage: r.gymImage || "/placeholder.svg",
+            date: r.date,
+            time: r.time,
+            duration: "1h",
+            status: r.status === "confirmed" ? "confirmada" : r.status === "pending" ? "pendente" : r.status === "cancelled" ? "cancelada" : "concluida",
+            instructor: r.instructorName,
+          }))
+          setApiReservations(mapped)
+        }
+        if (resGyms.success && resGyms.data) {
+          setAvailableGyms(resGyms.data)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar reservas:", error)
+      }
+    }
+    if (isAuthenticated) loadReservations()
+  }, [isAuthenticated])
+
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -202,8 +246,8 @@ export default function ReservasPage() {
     )
   }
 
-  const activeReservations = reservations.filter(r => r.status === "confirmada" || r.status === "pendente")
-  const pastReservations = reservations.filter(r => r.status === "concluida" || r.status === "cancelada")
+  const activeReservations = apiReservations.filter(r => r.status === "confirmada" || r.status === "pendente")
+  const pastReservations = apiReservations.filter(r => r.status === "concluida" || r.status === "cancelada")
 
   const filteredActive = filter === "all" 
     ? activeReservations 
@@ -387,61 +431,64 @@ export default function ReservasPage() {
                 <p className="mb-4 text-sm text-muted-foreground">Agende sua proxima aula nas academias parceiras</p>
                 
                 <div className="space-y-3">
-                  {upcomingClasses.map((cls) => (
-                    <Card key={cls.id} className="overflow-hidden">
-                      <CardContent className="p-0">
-                        <div className="flex gap-4 p-4">
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
-                            <Image
-                              src={cls.gym.images[0] || "/placeholder.svg"}
-                              alt={cls.gym.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <h3 className="font-semibold text-foreground">{cls.title}</h3>
-                                <p className="text-sm text-muted-foreground">{cls.gym.name}</p>
+                  {defaultClasses.map((cls, i) => {
+                    const gym = availableGyms[i]
+                    return (
+                      <Card key={cls.id} className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="flex gap-4 p-4">
+                            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
+                              <Image
+                                src={gym?.images?.[0] || cls.gymImage}
+                                alt={gym?.name || cls.gymName}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <h3 className="font-semibold text-foreground">{cls.title}</h3>
+                                  <p className="text-sm text-muted-foreground">{gym?.name || cls.gymName}</p>
+                                </div>
+                                <Badge variant="outline" className={cls.spots <= 3 ? "border-primary text-primary" : ""}>
+                                  {cls.spots} vagas
+                                </Badge>
                               </div>
-                              <Badge variant="outline" className={cls.spots <= 3 ? "border-primary text-primary" : ""}>
-                                {cls.spots} vagas
-                              </Badge>
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatDate(cls.date)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {cls.time} ({cls.duration})
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Dumbbell className="h-3.5 w-3.5" />
-                                {cls.instructor}
-                              </span>
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {formatDate(cls.date)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {cls.time} ({cls.duration})
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Dumbbell className="h-3.5 w-3.5" />
+                                  {cls.instructor}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex border-t border-border">
-                          <Link
-                            href={`/academia/${cls.gym.id}`}
-                            className="flex-1 py-3 text-center text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                          >
-                            Ver Academia
-                          </Link>
-                          <button
-                            type="button"
-                            className="flex-1 border-l border-border py-3 text-center text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-                          >
-                            Reservar
-                          </button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <div className="flex border-t border-border">
+                            <Link
+                              href={`/academia/${gym?.slug || cls.gymSlug}`}
+                              className="flex-1 py-3 text-center text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                            >
+                              Ver Academia
+                            </Link>
+                            <button
+                              type="button"
+                              className="flex-1 border-l border-border py-3 text-center text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                            >
+                              Reservar
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
 

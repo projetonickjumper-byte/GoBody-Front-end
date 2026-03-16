@@ -16,40 +16,23 @@ export { studentsService } from "./services/students.service"
 export { gymsService } from "./services/gyms.service"
 export { adminService } from "./services/admin.service"
 export { ordersService } from "./services/orders.service"
-export type { ServiceOrder, CreateOrderDTO, OrderFilters } from "./services/orders.service"
+export { usersService } from "./services/users.service"
+export { reservationsService } from "./services/reservations.service"
+export { billingService } from "./services/billing.service"
+export { checkinsService } from "./services/checkins.service"
+export { favoritesService } from "./services/favorites.service"
+export { rankingService } from "./services/ranking.service"
+export { promotionsService } from "./services/promotions.service"
+export { bannersService } from "./services/banners.service"
+export { reviewsService } from "./services/reviews.service"
+export { notificationsService } from "./services/notifications.service"
 
-// ============================================================
-// INSTRUÇÕES PARA INTEGRAÇÃO COM BACKEND
-// ============================================================
-//
-// 1. Configure a URL do backend no arquivo .env:
-//    NEXT_PUBLIC_API_URL=https://seu-backend.com/api
-//
-// 2. No arquivo lib/api/config.ts, altere:
-//    USE_MOCK: false
-//
-// 3. Os serviços já estão preparados para fazer chamadas reais.
-//    Cada serviço verifica isMockMode() e, se false, usa httpClient.
-//
-// 4. O httpClient já inclui:
-//    - Headers padrão (Content-Type: application/json)
-//    - Token de autenticação (se disponível no localStorage)
-//    - Tratamento de timeout
-//    - Tratamento de erros
-//
-// 5. Endpoints da API estão definidos em lib/api/config.ts
-//    Ajuste conforme necessário para corresponder ao seu backend.
-//
-// 6. Cada serviço retorna um objeto ApiResponse<T> com:
-//    - data: dados da resposta (ou null em caso de erro)
-//    - error: mensagem de erro (ou null em caso de sucesso)
-//    - status: código HTTP
-//    - success: boolean indicando sucesso
-//
-// 7. Para adicionar novos endpoints:
-//    a) Adicione o endpoint em API_CONFIG.ENDPOINTS
-//    b) Crie um novo serviço ou adicione método em serviço existente
-//    c) Implemente a versão mock primeiro para desenvolvimento
-//    d) Adicione a chamada real ao backend
-//
-// ============================================================
+// Types re-exports
+export type { ServiceOrder, CreateOrderDTO, OrderFilters } from "./services/orders.service"
+export type { UpdateProfileData } from "./services/users.service"
+export type { CreateReservationData } from "./services/reservations.service"
+export type { BillingSummary, TransactionFilters, Invoice } from "./services/billing.service"
+export type { CheckIn } from "./services/checkins.service"
+export type { FavoriteGym } from "./services/favorites.service"
+export type { CreateReviewData } from "./services/reviews.service"
+export type { Notification } from "./services/notifications.service"

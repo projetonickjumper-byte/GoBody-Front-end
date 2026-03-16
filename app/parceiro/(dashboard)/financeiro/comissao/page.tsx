@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BadgeDollarSign, Users, TrendingUp, Calendar, Search, Download, Settings, MoreVertical } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockProfessionals = [
   { id: "1", name: "Carlos Lima", role: "Personal Trainer", sales: 12, revenue: 3600, commission: 1080, rate: 30, avatar: "CL" },
@@ -21,12 +22,27 @@ const mockProfessionals = [
 export default function ComissaoPage() {
   const [search, setSearch] = useState("")
   const [period, setPeriod] = useState("mes")
+  const [professionals, setProfessionals] = useState(mockProfessionals)
 
-  const totalComissoes = mockProfessionals.reduce((acc, p) => acc + p.commission, 0)
-  const totalRevenue = mockProfessionals.reduce((acc, p) => acc + p.revenue, 0)
-  const maxCommission = Math.max(...mockProfessionals.map(p => p.commission))
+  useEffect(() => {
+    async function loadCommissions() {
+      try {
+        const res = await billingService.getTransactions({ type: "commission" })
+        if (res.success && res.data && res.data.length > 0) {
+          setProfessionals(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar comissões:", error)
+      }
+    }
+    loadCommissions()
+  }, [])
 
-  const filtered = mockProfessionals.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+  const totalComissoes = professionals.reduce((acc, p) => acc + p.commission, 0)
+  const totalRevenue = professionals.reduce((acc, p) => acc + p.revenue, 0)
+  const maxCommission = Math.max(...professionals.map(p => p.commission))
+
+  const filtered = professionals.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="space-y-6">

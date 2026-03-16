@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Filter, Download, Plus, Search, Calendar, Eye, MoreVertical } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockTransactions = [
   { id: "1", type: "entrada", description: "Mensalidade - Maria Silva", value: 149.90, date: "2026-02-09", category: "Mensalidade", method: "PIX" },
@@ -26,7 +27,21 @@ export default function CaixaPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [transactions] = useState(mockTransactions)
+  const [transactions, setTransactions] = useState(mockTransactions)
+
+  useEffect(() => {
+    async function loadTransactions() {
+      try {
+        const res = await billingService.getTransactions({})
+        if (res.success && res.data && res.data.length > 0) {
+          setTransactions(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar transações:", error)
+      }
+    }
+    loadTransactions()
+  }, [])
 
   const totalEntradas = transactions.filter(t => t.type === "entrada").reduce((acc, t) => acc + t.value, 0)
   const totalSaidas = transactions.filter(t => t.type === "saida").reduce((acc, t) => acc + t.value, 0)

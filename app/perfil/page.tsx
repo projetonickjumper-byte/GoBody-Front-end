@@ -1,19 +1,33 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { AppShell } from "@/components/app-shell"
 import { ProfileHeader } from "@/components/profile/profile-header"
 import { ProfileMenu } from "@/components/profile/profile-menu"
 import { AchievementsPreview } from "@/components/profile/achievements-preview"
-import { achievements } from "@/lib/data"
+import { rankingService } from "@/lib/api/services/ranking.service"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
+import type { Achievement } from "@/lib/types"
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+
+  useEffect(() => {
+    async function loadAchievements() {
+      try {
+        const res = await rankingService.getAchievements()
+        if (res.success && res.data) setAchievements(res.data)
+      } catch (error) {
+        console.error("Erro ao carregar conquistas:", error)
+      }
+    }
+    if (isAuthenticated) loadAchievements()
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

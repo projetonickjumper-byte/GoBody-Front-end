@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,11 +25,12 @@ import {
   RefreshCw,
 } from "lucide-react"
 import {
-  dashboardStats,
-  empresasCrescimento,
-  faturamentoMensal,
-  empresas,
+  dashboardStats as mockDashboardStats,
+  empresasCrescimento as mockEmpresasCrescimento,
+  faturamentoMensal as mockFaturamentoMensal,
+  empresas as mockEmpresas,
 } from "@/lib/admin-data"
+import { adminService } from "@/lib/api/services/admin.service"
 import {
   Area,
   AreaChart,
@@ -52,6 +53,30 @@ const statusConfig = {
 
 export default function AdminDashboardPage() {
   const [timeRange, setTimeRange] = useState("30d")
+  const [dashboardStats, setDashboardStats] = useState(mockDashboardStats)
+  const [empresasCrescimento, setEmpresasCrescimento] = useState(mockEmpresasCrescimento)
+  const [faturamentoMensal, setFaturamentoMensal] = useState(mockFaturamentoMensal)
+  const [empresas, setEmpresas] = useState(mockEmpresas)
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const [statsRes, companiesRes, growthRes, revenueRes] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getCompanies(),
+          adminService.getGrowthData(),
+          adminService.getRevenueData(),
+        ])
+        if (statsRes.success && statsRes.data) setDashboardStats(statsRes.data as any)
+        if (companiesRes.success && companiesRes.data) setEmpresas(companiesRes.data as any)
+        if (growthRes.success && growthRes.data) setEmpresasCrescimento(growthRes.data as any)
+        if (revenueRes.success && revenueRes.data) setFaturamentoMensal(revenueRes.data as any)
+      } catch (error) {
+        console.error("Erro ao carregar dashboard admin:", error)
+      }
+    }
+    loadDashboard()
+  }, [])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {

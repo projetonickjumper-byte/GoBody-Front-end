@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { AppShell } from "@/components/app-shell"
 import { Header } from "@/components/header"
-import { currentUser, mockGyms } from "@/lib/data"
+import { rankingService } from "@/lib/api/services/ranking.service"
 import { useAuth } from "@/lib/auth-context"
 
 interface RankingEntry {
@@ -76,15 +76,41 @@ const getMedalStyle = (position: number) => {
 
 export default function RankingPage() {
   const [period, setPeriod] = useState("monthly")
-  const { isAuthenticated, isLoading } = useAuth()
+  const [rankingData, setRankingData] = useState<RankingEntry[]>(globalRanking)
+  const { isAuthenticated, isLoading, user } = useAuth()
   const router = useRouter()
-  const currentUserEntry = globalRanking.find(e => e.userId === "u1")
+  const currentUserEntry = rankingData.find(e => e.userId === user?.id || e.userId === "u1")
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login")
     }
   }, [isAuthenticated, isLoading, router])
+
+  useEffect(() => {
+    async function loadRanking() {
+      try {
+        const res = await rankingService.getRanking()
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped = res.data.map((entry, index) => ({
+            position: entry.position || index + 1,
+            userId: entry.userId,
+            userName: entry.userName,
+            userAvatar: entry.userAvatar,
+            points: entry.points,
+            checkins: entry.checkins,
+            streak: entry.streak,
+            level: 1,
+            change: 0,
+          }))
+          setRankingData(mapped)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar ranking:", error)
+      }
+    }
+    if (isAuthenticated) loadRanking()
+  }, [isAuthenticated])
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -177,7 +203,7 @@ export default function RankingPage() {
               {/* Top 3 Podium */}
               <div className="flex justify-center items-end gap-4 py-6">
                 {[1, 0, 2].map((index) => {
-                  const entry = globalRanking[index]
+                  const entry = rankingData[index]
                   if (!entry) return null
                   const style = getMedalStyle(entry.position)
                   const sizes = {
@@ -217,7 +243,7 @@ export default function RankingPage() {
 
               {/* Rest of Ranking */}
               <div className="space-y-2">
-                {globalRanking.slice(3).map((entry) => {
+                {rankingData.slice(3).map((entry) => {
                   const style = getMedalStyle(entry.position)
                   const isCurrentUser = entry.userId === "u1"
                   
@@ -354,13 +380,13 @@ export default function RankingPage() {
                   <p className="text-sm text-muted-foreground">Troque seus pontos por premios</p>
                 </div>
                 <Badge className="bg-primary text-primary-foreground">
-                  {currentUser.xp} pts disponiveis
+                  {user?.xp || 0} pts disponiveis
                 </Badge>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {rewards.map((reward) => {
-                  const canRedeem = currentUser.xp >= reward.points
+                  const canRedeem = (user?.xp || 0) >= reward.points
                   return (
                     <Card key={reward.id} className={cn(!canRedeem && "opacity-60")}>
                       <CardContent className="p-0">

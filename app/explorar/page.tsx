@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, SlidersHorizontal, X, MapPin, Star } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,17 +18,36 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { AppShell } from "@/components/app-shell";
-import { mockGyms, mockCategories } from "@/lib/data";
+import { gymsService } from "@/lib/api/services/gyms.service";
+import type { Gym, Category } from "@/lib/types";
 
 export default function ExplorarPage() {
+  const [allGyms, setAllGyms] = useState<Gym[]>([]);
+  const [mockCategories, setMockCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 100]);
   const [minRating, setMinRating] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [gymsRes, catsRes] = await Promise.all([
+          gymsService.getAll({ pageSize: 100 }),
+          gymsService.getCategories(),
+        ]);
+        if (gymsRes.success && gymsRes.data) setAllGyms(gymsRes.data);
+        if (catsRes.success && catsRes.data) setMockCategories(catsRes.data);
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+      }
+    }
+    loadData();
+  }, []);
+
   const filteredGyms = useMemo(() => {
-    return mockGyms.filter((gym) => {
+    return allGyms.filter((gym) => {
       const matchesSearch =
         searchQuery === "" ||
         gym.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowLeft, Trophy, Lock, Star, Flame, Target, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Trophy, Lock, Star, Flame, Target, Zap, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AppShell } from "@/components/app-shell";
+import { rankingService } from "@/lib/api/services/ranking.service";
 
 const allAchievements = [
   {
@@ -95,8 +97,24 @@ function formatDate(dateStr: string) {
 }
 
 export default function ConquistasPage() {
-  const unlockedCount = allAchievements.filter((a) => a.unlocked).length;
-  const totalXPFromAchievements = allAchievements
+  const [achievements, setAchievements] = useState(allAchievements);
+
+  useEffect(() => {
+    async function loadAchievements() {
+      try {
+        const res = await rankingService.getAchievements();
+        if (res.success && res.data && res.data.length > 0) {
+          setAchievements(res.data as any);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar conquistas:", error);
+      }
+    }
+    loadAchievements();
+  }, []);
+
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
+  const totalXPFromAchievements = achievements
     .filter((a) => a.unlocked)
     .reduce((sum, a) => sum + a.xp, 0);
 
@@ -125,14 +143,14 @@ export default function ConquistasPage() {
               <div>
                 <p className="text-muted-foreground text-sm">Conquistas Desbloqueadas</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {unlockedCount}/{allAchievements.length}
+                  {unlockedCount}/{achievements.length}
                 </p>
                 <p className="text-sm text-primary">+{totalXPFromAchievements} XP ganhos</p>
               </div>
             </div>
             <div className="mt-4">
               <Progress
-                value={(unlockedCount / allAchievements.length) * 100}
+                value={(unlockedCount / achievements.length) * 100}
                 className="h-2"
               />
             </div>
@@ -146,7 +164,7 @@ export default function ConquistasPage() {
             Desbloqueadas
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {allAchievements
+            {achievements
               .filter((a) => a.unlocked)
               .map((achievement) => {
                 const Icon = achievement.icon;
@@ -189,7 +207,7 @@ export default function ConquistasPage() {
             Em Progresso
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {allAchievements
+            {achievements
               .filter((a) => !a.unlocked)
               .map((achievement) => {
                 const Icon = achievement.icon;

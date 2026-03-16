@@ -6,9 +6,11 @@ import { ArrowLeft, Copy, Share2, Users, Gift, Check, MessageCircle, Mail } from
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AppShell } from "@/components/app-shell"
-import { mockUser } from "@/lib/data"
+import { useAuth } from "@/lib/auth-context"
 
-const referralCode = "FITAPP-" + mockUser.name.toUpperCase().replace(/\s/g, "").slice(0, 4) + "2026"
+function GenerateReferralCode(name: string) {
+  return "FITAPP-" + name.toUpperCase().replace(/\s/g, "").slice(0, 4) + "2026"
+}
 
 const rewards = [
   { friends: 1, reward: "+100 XP", description: "Primeiro amigo" },
@@ -23,6 +25,8 @@ const referredFriends = [
 ]
 
 export default function IndicarPage() {
+  const { user } = useAuth()
+  const referralCode = GenerateReferralCode(user?.name || "USER")
   const [copied, setCopied] = useState(false)
   const [email, setEmail] = useState("")
   const [emailSent, setEmailSent] = useState(false)

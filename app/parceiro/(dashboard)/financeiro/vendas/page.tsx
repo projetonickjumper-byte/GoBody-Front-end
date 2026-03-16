@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ShoppingBasket, TrendingUp, DollarSign, ShoppingCart, Search, Download, Calendar, Eye } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { billingService } from "@/lib/api/services/billing.service"
 
 const mockSales = [
   { id: "1", client: "Maria Silva", items: "Plano Mensal Premium", qty: 1, value: 199.90, date: "2026-02-09", method: "PIX", seller: "Online" },
@@ -21,11 +22,26 @@ const mockSales = [
 export default function VendasPage() {
   const [search, setSearch] = useState("")
   const [period, setPeriod] = useState("mes")
+  const [sales, setSales] = useState(mockSales)
 
-  const totalVendas = mockSales.reduce((a, b) => a + b.value, 0)
-  const ticketMedio = totalVendas / mockSales.length
+  useEffect(() => {
+    async function loadSales() {
+      try {
+        const res = await billingService.getTransactions({ type: "sale" })
+        if (res.success && res.data && res.data.length > 0) {
+          setSales(res.data as any)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar vendas:", error)
+      }
+    }
+    loadSales()
+  }, [])
 
-  const filtered = mockSales.filter(s =>
+  const totalVendas = sales.reduce((a, b) => a + b.value, 0)
+  const ticketMedio = sales.length > 0 ? totalVendas / sales.length : 0
+
+  const filtered = sales.filter(s =>
     s.client.toLowerCase().includes(search.toLowerCase()) || s.items.toLowerCase().includes(search.toLowerCase())
   )
 
