@@ -13,11 +13,14 @@ import {
   Coffee,
   ChevronDown,
   ChevronUp,
+  MapPin,
+  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LeafletMap, type MapMarker } from "@/components/dynamic-map"
 import type { Gym, GymClass } from "@/lib/types"
 
 interface AboutSectionProps {
@@ -146,6 +149,60 @@ export function AboutSection({ gym, classes }: AboutSectionProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Location Map */}
+      {gym.latitude && gym.longitude && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                Localização
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs gap-1 text-muted-foreground"
+                asChild
+              >
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${gym.latitude},${gym.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Abrir no Google Maps
+                </a>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-lg overflow-hidden border border-border" style={{ height: "220px" }}>
+              <LeafletMap
+                markers={[
+                  {
+                    id: gym.id,
+                    lat: gym.latitude,
+                    lng: gym.longitude,
+                    title: gym.name,
+                    subtitle: `${gym.address}, ${gym.city}`,
+                    rating: gym.rating,
+                    slug: gym.slug,
+                  },
+                ]}
+                center={[gym.latitude, gym.longitude]}
+                zoom={15}
+                showUserLocation={false}
+                className="h-full w-full"
+                minHeight="220px"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {gym.address}, {gym.city} - {gym.state}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Classes Schedule */}
       {classes.length > 0 && (

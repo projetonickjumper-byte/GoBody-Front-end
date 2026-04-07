@@ -1,31 +1,86 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { ArrowLeft, MapPin, Star, Navigation, List, X, Grid } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { AppShell } from "@/components/app-shell";
-import { gymsService } from "@/lib/api/services/gyms.service";
-import type { Gym } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react"
+import { ArrowLeft, MapPin, Star, Navigation, List, X, Grid, Search, Loader2 } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { AppShell } from "@/components/app-shell"
+import { LeafletMap, type MapMarker } from "@/components/dynamic-map"
+import { gymsService } from "@/lib/api/services/gyms.service"
+import type { Gym } from "@/lib/types"
 
 export default function MapaPage() {
-  const [allGyms, setAllGyms] = useState<Gym[]>([]);
-  const [selectedGym, setSelectedGym] = useState<Gym | null>(null);
-  const [showList, setShowList] = useState(false);
+  const [allGyms, setAllGyms] = useState<Gym[]>([])
+  const [selectedGym, setSelectedGym] = useState<Gym | null>(null)
+  const [showList, setShowList] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
 
+  // Carregar academias
   useEffect(() => {
     async function loadGyms() {
       try {
-        const res = await gymsService.getAll({ pageSize: 100 });
-        if (res.success && res.data) setAllGyms(res.data);
+        setLoading(true)
+        const res = await gymsService.getAll({ pageSize: 100 })
+        if (res.success && res.data) setAllGyms(res.data)
       } catch (error) {
-        console.error("Erro ao carregar academias:", error);
+        console.error("Erro ao carregar academias:", error)
+      } finally {
+        setLoading(false)
       }
     }
-    loadGyms();
-  }, []);
+    loadGyms()
+  }, [])
+
+  // Obter localização do usuário
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
+        () => setUserLocation([-23.5505, -46.6333]),
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    }
+  }, [])
+
+  // Converter academias em marcadores do mapa
+  const mapMarkers: MapMarker[] = allGyms
+    .filter((gym) => gym.latitude && gym.longitude)
+    .map((gym) => ({
+      id: gym.id,
+      lat: gym.latitude,
+      lng: gym.longitude,
+      title: gym.name,
+      subtitle: `${gym.address}, ${gym.city}`,
+      price: gym.dayUse?.price ? `R$ ${gym.dayUse.price.toFixed(2).replace(".", ",")}` : undefined,
+      rating: gym.rating,
+      image: gym.images?.[0],
+      slug: gym.slug,
+    }))
+
+  // Filtrar por busca
+  const filteredGyms = searchQuery
+    ? allGyms.filter(
+        (gym) =>
+          gym.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          gym.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          gym.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          gym.modalities.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : allGyms
+
+  const handleMarkerClick = useCallback((marker: MapMarker) => {
+    const gym = allGyms.find((g) => g.id === marker.id)
+    if (gym) setSelectedGym(gym)
+  }, [allGyms])
+
+  const handleMapClick = useCallback(() => {
+    setSelectedGym(null)
+  }, [])
 
   return (
     <AppShell>
@@ -40,6 +95,11 @@ export default function MapaPage() {
                 </Button>
               </Link>
               <h1 className="text-xl font-bold">Mapa</h1>
+              {!loading && (
+                <Badge variant="secondary" className="text-xs">
+                  {allGyms.length} academias
+                </Badge>
+              )}
             </div>
             <Button
               variant="outline"
@@ -55,16 +115,34 @@ export default function MapaPage() {
 
         <div className="flex h-[calc(100vh-73px)] lg:h-[calc(100vh-73px)]">
           {/* Desktop: Side Panel */}
-          <aside className={`hidden lg:block w-96 border-r border-border overflow-y-auto ${!showList ? 'lg:block' : 'lg:hidden'}`}>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground mb-4">{allGyms.length} academias encontradas</p>
-              {allGyms.map((gym) => (
+          <aside className={`hidden lg:flex flex-col w-96 border-r border-border ${!showList ? "lg:flex" : "lg:hidden"}`}>
+            {/* Search */}
+            <div className="p-4 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar academia..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-secondary"
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <p className="text-sm text-muted-foreground mb-2">
+                {filteredGyms.length} {filteredGyms.length === 1 ? "academia encontrada" : "academias encontradas"}
+              </p>
+              {filteredGyms.map((gym) => (
                 <button
                   key={gym.id}
                   type="button"
                   onClick={() => setSelectedGym(gym)}
                   className={`w-full text-left bg-card rounded-xl overflow-hidden border transition-all ${
-                    selectedGym?.id === gym.id ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
+                    selectedGym?.id === gym.id
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-border hover:border-primary/50"
                   }`}
                 >
                   <div className="flex">
@@ -77,9 +155,7 @@ export default function MapaPage() {
                       />
                     </div>
                     <div className="flex-1 p-3">
-                      <h3 className="font-semibold text-foreground line-clamp-1">
-                        {gym.name}
-                      </h3>
+                      <h3 className="font-semibold text-foreground line-clamp-1">{gym.name}</h3>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />
                         <span className="line-clamp-1">{gym.address}</span>
@@ -101,11 +177,22 @@ export default function MapaPage() {
           </aside>
 
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
             {showList ? (
               /* Mobile List View */
               <div className="p-4 space-y-3 lg:hidden overflow-y-auto h-full">
-                {allGyms.map((gym) => (
+                {/* Mobile Search */}
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar academia..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-secondary"
+                  />
+                </div>
+
+                {filteredGyms.map((gym) => (
                   <Link
                     key={gym.id}
                     href={`/academia/${gym.slug}`}
@@ -121,9 +208,7 @@ export default function MapaPage() {
                         />
                       </div>
                       <div className="flex-1 p-3">
-                        <h3 className="font-semibold text-foreground line-clamp-1">
-                          {gym.name}
-                        </h3>
+                        <h3 className="font-semibold text-foreground line-clamp-1">{gym.name}</h3>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                           <MapPin className="h-3.5 w-3.5" />
                           <span className="line-clamp-1">{gym.address}</span>
@@ -143,95 +228,44 @@ export default function MapaPage() {
                 ))}
               </div>
             ) : (
-              /* Map View */
-              <div className="relative h-full">
-                {/* Simulated Map Background */}
-                <div className="absolute inset-0 bg-secondary">
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `
-                        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-                      `,
-                      backgroundSize: "40px 40px",
-                    }}
-                  />
-
-                  {/* Map Markers */}
-                  {allGyms.map((gym, index) => {
-                    const positions = [
-                      { top: "20%", left: "30%" },
-                      { top: "35%", left: "60%" },
-                      { top: "50%", left: "25%" },
-                      { top: "40%", left: "45%" },
-                      { top: "65%", left: "55%" },
-                      { top: "25%", left: "70%" },
-                      { top: "55%", left: "75%" },
-                      { top: "70%", left: "35%" },
-                    ];
-                    const pos = positions[index % positions.length];
-
-                    return (
-                      <button
-                        key={gym.id}
-                        type="button"
-                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all ${
-                          selectedGym?.id === gym.id ? "z-20 scale-125" : "z-10"
-                        }`}
-                        style={{ top: pos.top, left: pos.left }}
-                        onClick={() => setSelectedGym(gym)}
-                      >
-                        <div
-                          className={`relative ${
-                            selectedGym?.id === gym.id
-                              ? "text-primary"
-                              : "text-foreground"
-                          }`}
-                        >
-                          <MapPin
-                            className={`h-8 w-8 lg:h-10 lg:w-10 ${
-                              selectedGym?.id === gym.id
-                                ? "fill-primary"
-                                : "fill-card"
-                            } drop-shadow-lg`}
-                          />
-                          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                            <Badge
-                              variant="secondary"
-                              className="text-xs bg-card shadow-md"
-                            >
-                              R$ {gym.dayUse?.price?.toFixed(0) ?? "—"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  {/* User Location */}
-                  <div
-                    className="absolute z-30"
-                    style={{ top: "45%", left: "50%" }}
-                  >
-                    <div className="relative">
-                      <div className="absolute -inset-3 bg-blue-500/20 rounded-full animate-ping" />
-                      <div className="h-4 w-4 bg-blue-500 rounded-full border-2 border-background shadow-lg" />
+              /* Map View - LEAFLET */
+              <div className="relative h-full w-full">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full bg-secondary">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Carregando academias...</p>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <LeafletMap
+                    markers={mapMarkers}
+                    selectedMarkerId={selectedGym?.id || null}
+                    onMarkerClick={handleMarkerClick}
+                    onMapClick={handleMapClick}
+                    showUserLocation
+                    userLocation={userLocation}
+                    className="h-full w-full"
+                  />
+                )}
 
                 {/* Recenter Button */}
                 <Button
                   size="icon"
-                  className="absolute bottom-24 lg:bottom-8 right-4 z-30 bg-card text-foreground shadow-lg"
+                  className="absolute bottom-24 lg:bottom-8 right-4 z-[1000] bg-card text-foreground shadow-lg hover:bg-card/80"
+                  onClick={() => {
+                    if (userLocation) {
+                      // Forçar recentrar limpando seleção
+                      setSelectedGym(null)
+                    }
+                  }}
                 >
                   <Navigation className="h-5 w-5" />
                 </Button>
 
                 {/* Selected Gym Card - Mobile */}
                 {selectedGym && (
-                  <div className="absolute bottom-4 left-4 right-4 z-30 lg:hidden">
+                  <div className="absolute bottom-4 left-4 right-4 z-[1000] lg:hidden">
                     <div className="bg-card rounded-xl overflow-hidden border border-border shadow-xl">
                       <div className="flex">
                         <div className="relative h-24 w-24 shrink-0">
@@ -281,7 +315,7 @@ export default function MapaPage() {
 
                 {/* Selected Gym Card - Desktop */}
                 {selectedGym && (
-                  <div className="hidden lg:block absolute bottom-8 left-8 z-30 w-80">
+                  <div className="hidden lg:block absolute bottom-8 left-8 z-[1000] w-80">
                     <div className="bg-card rounded-xl overflow-hidden border border-border shadow-xl">
                       <div className="relative aspect-video">
                         <Image
@@ -305,7 +339,9 @@ export default function MapaPage() {
                         </h3>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          <span className="line-clamp-1">{selectedGym.address}, {selectedGym.city}</span>
+                          <span className="line-clamp-1">
+                            {selectedGym.address}, {selectedGym.city}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 mt-3">
                           <Star className="h-5 w-5 fill-primary text-primary" />
@@ -313,8 +349,20 @@ export default function MapaPage() {
                             {selectedGym.rating.toFixed(1)}
                           </span>
                           <span className="text-muted-foreground text-sm">
-                            ({selectedGym.totalReviews} avaliacoes)
+                            ({selectedGym.totalReviews} avaliações)
                           </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {selectedGym.modalities.slice(0, 3).map((mod) => (
+                            <Badge key={mod} variant="secondary" className="text-xs">
+                              {mod}
+                            </Badge>
+                          ))}
+                          {selectedGym.modalities.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{selectedGym.modalities.length - 3}
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                           <div>
@@ -339,5 +387,5 @@ export default function MapaPage() {
         </div>
       </div>
     </AppShell>
-  );
+  )
 }
